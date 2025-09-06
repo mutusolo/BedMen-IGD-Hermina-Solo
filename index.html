@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Bed Manajemen & LOS IGD RS Hermina Solo (v7.6)</title>
+<style>
+  :root{
+    --bg:#f5f7fa;--text:#223;--card:#fff;
+    --triase-1-2:#e74c3c; /* merah */
+    --triase-3:#f1c40f;   /* kuning */
+    --triase-4-5:#2ecc71; /* hijau */
+    --no-triase:#add8ff;  /* biru muda */
+    --available:#ffffff;  /* putih */
+  }
+  /* Input di tabel rekap edit inline */
+#rekapTable input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  font-size: 13px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  border: 1px solid #d5d5d5;
+  background: #f8f8fb;
+}
+  body{font-family:Inter,Arial,Helvetica,sans-serif;background:var(--bg);margin:0;color:var(--text)}
+  header{background:#2c3e50;color:#fff;padding:14px 16px;position:relative}
+  header h1{margin:0;font-size:18px}
+  .menu-icon{position:absolute;right:14px;top:12px;cursor:pointer;font-size:20px}
+  nav{display:flex;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,0.08)}
+  nav button{flex:1;padding:10px;border:0;background:#ecf0f1;cursor:pointer;font-weight:700}
+  nav button.active{background:#3498db;color:#fff}
+  main{padding:12px}
+  .zones-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+  .zone{background:var(--card);border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.06);overflow:hidden}
+  .zone-header{padding:10px;color:#fff;font-weight:700;text-align:center}
+  .padma{background:#3498db}
+  .kamala{background:#e74c3c}
+  .ponek{background:#9b59b6}
+  .bed-card{padding:10px;border-top:1px solid #eee;border-radius:6px;margin:8px}
+  .bed-header{display:flex;justify-content:space-between;align-items:center}
+  .bed-meta{font-size:13px;color:#222;margin-top:6px;line-height:1.4}
+  .los-timer{font-family:monospace;background:#fff;border:1px solid #eee;padding:4px 6px;border-radius:6px;display:inline-block;margin-top:8px}
+  .btn{padding:6px 8px;border-radius:6px;border:0;cursor:pointer;margin-right:6px}
+  .btn-admit{background:#2d9cdb;color:#fff}
+  .btn-edit{background:#9b59b6;color:#fff}
+  .btn-stop{background:#f39c12;color:#fff}
+  .btn-small{padding:6px 10px;border-radius:6px;border:0;cursor:pointer}
+  .modal{display:none;position:fixed;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.45);justify-content:center;align-items:flex-start;padding-top:40px;z-index:999}
+  .panel{background:#fff;border-radius:8px;padding:12px;max-height:85vh;overflow:auto; width:520px;box-shadow:0 8px 30px rgba(0,0,0,0.2)}
+  label{display:block;font-size:13px;margin-top:8px}
+  input[type="text"],input[type="date"],input[type="number"],select{width:100%;padding:8px;margin-top:4px;border:1px solid #ddd;border-radius:6px;font-size:14px}
+  .row{display:flex;gap:8px}
+  .row .col{flex:1}
+  .hint{font-size:12px;color:#666;margin-top:6px}
+  table{width:100%;border-collapse:collapse;margin-top:8px}
+  th,td{border:1px solid #e6e6e6;padding:6px;font-size:13px;text-align:left}
+  th{background:#3498db;color:#fff;position:sticky;top:0}
+  .export-btn{background:#27ae60;color:#fff;padding:8px 10px;border-radius:6px;border:0;cursor:pointer}
+  .master-list-item{display:flex;justify-content:space-between;align-items:center;padding:6px;border-bottom:1px solid #eee}
+  .wide-scroll{overflow:auto}
+  .readonly{background:#f0f0f0}
+  .small{font-size:12px;color:#666}
+  .action-row{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+  .mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.selected-orange {
+  background: #f39c12 !important;
+  color: #fff !important;
+}
+
+</style>
+</head>
+<body>
+<header>
+  <h1>Bed Manajemen & LOS IGD RS Hermina Solo</h1>
+  <div class="menu-icon" title="Master Data" onclick="openMasterModal()">⋮</div>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('dashboard')">Dashboard TT dan LOS</button>
+  <button onclick="showTab('rekap')">Rekap Data Pasien</button>
+</nav>
+
+<main>
+  <div id="dashboard" class="tab">
+    <div class="zones-grid" id="zonesGrid"></div>
+  </div>
+
+  <div id="statistik" class="tab" style="display:none">
+    <h3>Statistik IGD</h3>
+    <p class="hint">(Placeholder)</p>
+  </div>
+
+  <div id="rekap" class="tab" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h3>Rekap Data Pasien</h3>
+      <div><button class="export-btn" onclick="exportRekapCSV()">Export CSV</button>
+            <button class="export-btn" onclick="exportRekapExcel()">Export Excel</button></div>
+    </div>
+    <div class="wide-scroll">
+      <table id="rekapTable">
+        <thead>
+          <tr>
+            <th>Tanggal</th><th>MRN</th><th>Nama</th><th>Usia</th><th>Alamat</th><th>Baru/Lama</th><th>JK</th>
+            <th>Jam Datang</th><th>Jam Selesai</th><th>LOS</th>
+            <th>Triase</th><th>Cara Datang</th><th>Asal Rujukan</th><th>Jaminan</th><th>Status Rawat</th>
+            <th>Ruang</th><th>Kelas</th><th>Diagnosa</th><th>DPJP</th><th>Tindakan</th><th>Perawat</th><th>Dokter Jaga</th><th>Edit</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<!-- Admisi modal minimal -->
+<div class="modal" id="admisiModal">
+  <div class="panel">
+    <h3>Admisi Cepat (Nama saja)</h3>
+    <form id="admisiForm">
+      <label>Nama Pasien <input type="text" name="nama" required></label>
+      <input type="hidden" name="bedId">
+      <div class="action-row">
+        <button class="btn btn-admit" type="submit">Simpan Admisi</button>
+        <button class="btn" type="button" onclick="closeAdmisiModal()">Batal</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Patient minimal edit modal (from dashboard) - exclude statusRawat, dpjp, ruangRawat, kelas -->
+<div class="modal" id="patientModal">
+  <div class="panel">
+    <h3>Lengkapi Data Pasien</h3>
+    <form id="patientForm">
+      <label>MRN <input type="text" name="mrn"></label>
+      <label>Nama Pasien <input type="text" name="nama" required></label>
+      <div class="row">
+        <div class="col"><label>Tanggal Lahir <input type="date" name="birthdate" id="birthdate"></label></div>
+        <div class="col"><label>Usia (otomatis) <input type="text" name="usia_display" id="usia_display" readonly></label></div>
+      </div>
+      <label>Alamat <input type="text" name="alamat"></label>
+      <div class="row">
+        <div class="col"><label>Pasien <select name="pasienBaruLama"><option>Baru</option><option>Lama</option></select></label></div>
+        <div class="col"><label>JK <select name="jk"><option>P</option><option>L</option></select></label></div>
+      </div>
+      <label>Triase
+        <input list="dl_triase" name="triase" id="triase_input" placeholder="ketik 3 huruf">
+        <datalist id="dl_triase"></datalist>
+      </label>
+      <label>Cara Datang
+        <input list="dl_caradatang" name="caraDatang" id="cara_input" placeholder="ketik 3 huruf">
+        <datalist id="dl_caradatang"></datalist>
+      </label>
+      <label>Asal Rujukan
+        <input list="dl_asalrujukan" name="asalRujukan" id="asalrujukan_input">
+        <datalist id="dl_asalrujukan"></datalist>
+      </label>
+      <label>Jaminan
+        <input list="dl_jaminan" name="jaminan" id="jaminan_input" placeholder="ketik 3 huruf">
+        <datalist id="dl_jaminan"></datalist>
+      </label>
+      <label>Diagnosa <input type="text" name="diagnosa"></label>
+      <label>Tindakan IGD <input type="text" name="tindakanIGD"></label>
+      <label>Nama Perawat
+  <input list="dl_perawat" name="perawat" id="perawat_input">
+  <datalist id="dl_perawat"></datalist>
+</label>
+<label>Nama Dokter Jaga
+  <input list="dl_dokterjaga" name="dokterJaga" id="dokterjaga_input">
+  <datalist id="dl_dokterjaga"></datalist>
+</label>
+      <label>Jam Datang <input type="text" name="jamDatang" readonly class="readonly"></label>
+      
+
+      <input type="hidden" name="patientId">
+      <div class="action-row">
+        <button class="btn btn-admit" type="submit">Simpan</button>
+        <button class="btn" type="button" onclick="closePatientModal()">Batal</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<datalist id="dl_dpjp"></datalist>
+<datalist id="dl_ruang"></datalist>
+<datalist id="dl_kelas"></datalist>
+
+
+<!-- Discharge modal (flow) -->
+<div class="modal" id="dischargeModal">
+  <div class="panel">
+    <h3>Hentikan Pasien</h3>
+
+    <div id="dis_select">
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-stop" onclick="disChoosePulangkan()">Pulangkan</button>
+        <button class="btn btn-stop" onclick="disChoosePindahkan()">Pindahkan</button>
+      </div>
+      <div class="hint">Pilih tindakan hentikan pasien</div>
+    </div>
+
+    <div id="dis_pulangkan" style="display:none;margin-top:10px">
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="dischargeWith('RWJ')">RWJ / Pulang</button>
+        <button class="btn" onclick="dischargeWith('APS')">APS</button>
+        <button class="btn" onclick="dischargeWith('DOA')">DOA</button>
+      </div>
+      <div style="margin-top:8px"><button class="btn" onclick="showDisSelect()">Kembali</button></div>
+    </div>
+
+    <div id="dis_pindahkan" style="display:none;margin-top:10px">
+      <div style="display:flex;gap:8px">
+        <button class="btn" onclick="prepareMove('RWI')">RWI</button>
+        <button class="btn" onclick="prepareMove('ODC')">ODC</button>
+      </div>
+      <div id="dis_move_form" style="display:none;margin-top:10px">
+        <label>DPJP <input list="dl_dpjp" id="dis_dpjp"></label>
+        <label>Ruang Rawat <input list="dl_ruang" id="dis_ruang"></label>
+        <label>Kelas <input list="dl_kelas" id="dis_kelas"></label>
+        <div class="action-row">
+          <button class="btn btn-admit" onclick="dischargeMove()">Simpan Pindah</button>
+          <button class="btn" onclick="cancelMove()">Batal</button>
+        </div>
+      </div>
+      <div style="margin-top:8px"><button class="btn" onclick="showDisSelect()">Kembali</button></div>
+    </div>
+
+    <input type="hidden" id="dis_bedId">
+    <input type="hidden" id="dis_move_status">
+  </div>
+</div>
+
+<!-- Master modal -->
+<div class="modal" id="masterModal">
+  <div class="panel" style="width:720px">
+    <h3>Master Data</h3>
+    <div id="masterTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
+    <div id="masterContent"></div>
+    <div style="margin-top:10px"><button class="btn" onclick="closeMasterModal()">Tutup</button></div>
+  </div>
+</div>
+
+<!-- Edit Rekap modal -->
+<div class="modal" id="editRekapModal">
+  <div class="panel">
+    <h3>Edit Rekap Pasien</h3>
+    <form id="editRekapForm"></form>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<script>
+/* ---------- core helpers ---------- */
+function getNow(){ const now=new Date(); const hh=String(now.getHours()).padStart(2,'0'); const mm=String(now.getMinutes()).padStart(2,'0'); const ss=String(now.getSeconds()).padStart(2,'0'); return {timestamp: now.getTime(), jam:`${hh}:${mm}:${ss}`}; }
+function parseTimeToSeconds(t){ if(!t) return 0; const p=t.split(':').map(x=>parseInt(x,10)||0); return p[0]*3600+p[1]*60+p[2]; }
+function calcLOSFromTimes(jamDatang,jamSelesai){
+  let s1=parseTimeToSeconds(jamDatang), s2=parseTimeToSeconds(jamSelesai);
+  if(isNaN(s1) || isNaN(s2)) return '';
+  // if end <= start, assume crossing midnight -> add 24h to end
+  if(s2 <= s1) s2 += 24*3600;
+  const diff = s2 - s1;
+  const h=String(Math.floor(diff/3600)).padStart(2,'0'), m=String(Math.floor((diff%3600)/60)).padStart(2,'0'), s=String(diff%60).padStart(2,'0');
+  return `${h}:${m}:${s}`;
+}
+function formatMsToHHMMSS(ms){ if(!ms && ms!==0) return ''; const t=Math.floor(ms/1000); const h=String(Math.floor(t/3600)).padStart(2,'0'); const m=String(Math.floor((t%3600)/60)).padStart(2,'0'); const s=String(t%60).padStart(2,'0'); return `${h}:${m}:${s}`; }
+function calcAgeFromBirthdate(bd){ if(!bd) return {y:'',m:''}; const d=new Date(bd), t=new Date(); let y=t.getFullYear()-d.getFullYear(); let m=t.getMonth()-d.getMonth(); if(t.getDate()<d.getDate()) m--; if(m<0){ y--; m+=12 } return {y,m}; }
+
+/* ---------- data init ---------- */
+const defaultMaster = {
+  triase:["1 - Resusitasi","2 - Emergency","3 - Urgent","4 - Less Urgent","5 - Non Urgent"],
+  caraDatang:["Walk in","Rujukan datang sendiri","Sisrute","SPGDT"],
+  jaminan:["Umum","BPJS Kesehatan","Asuransi","Jasa Raharja"],
+  ruangRawat:["Bed 1","Bed 2","Bed 3"],
+  kelas:["Suite Room","VIP","Kelas 1","Kelas 2","Kelas 3"],
+  dpjp:["Dr. Ahmad","Dr. Budi"],
+  perawat:["Nurse A","Nurse B"],
+  dokterJaga:["Dr. Andi","Dr. Rina"]
+};
+let masterData = JSON.parse(localStorage.getItem('master_v7_6')) || JSON.parse(JSON.stringify(defaultMaster));
+let beds = JSON.parse(localStorage.getItem('beds_v7_6')) || (()=>{
+  const arr=[]; for(let i=1;i<=10;i++) arr.push({id:`PADMA-${String(i).padStart(2,'0')}`, zone:'padma', status:'available', patient:null});
+  for(let i=1;i<=11;i++) arr.push({id:`KAMALA-${String(i).padStart(2,'0')}`, zone:'kamala', status:'available', patient:null});
+  arr.push({id:'ISOLASI-01', zone:'ponek', status:'available', patient:null}); for(let i=1;i<=2;i++) arr.push({id:`PONEK-${String(i).padStart(2,'0')}`, zone:'ponek', status:'available', patient:null});
+  return arr;
+})();
+let rekapPasien = JSON.parse(localStorage.getItem('rekap_v7_6')) || [];
+
+/* ---------- persistence ---------- */
+function saveAll(){ localStorage.setItem('master_v7_6', JSON.stringify(masterData)); localStorage.setItem('beds_v7_6', JSON.stringify(beds)); localStorage.setItem('rekap_v7_6', JSON.stringify(rekapPasien)); }
+
+/* ---------- datalist ---------- */
+function fillDatalist(id,list){ const dl=document.getElementById(id); if(!dl) return; dl.innerHTML=''; list.forEach(v=>{ const o=document.createElement('option'); o.value=v; dl.appendChild(o); }); }
+function populateAllDatalists(){
+  fillDatalist('dl_triase', masterData.triase);
+  fillDatalist('dl_caradatang', masterData.caraDatang);
+  fillDatalist('dl_jaminan', masterData.jaminan);
+  fillDatalist('dl_ruang', masterData.ruangRawat);
+  fillDatalist('dl_kelas', masterData.kelas);
+  fillDatalist('dl_dpjp', masterData.dpjp);
+  fillDatalist('dl_perawat', masterData.perawat); // ← pastikan ini ada
+  fillDatalist('dl_dokterjaga', masterData.dokterJaga);
+  fillDatalist('dl_asalrujukan', masterData.asalRujukan); // ← pastikan ini ada
+}populateAllDatalists();
+
+/* ---------- render zones with triase-based colors and compact info ---------- */
+function renderZones(){
+  const container=document.getElementById('zonesGrid'); container.innerHTML='';
+  ['padma','kamala','ponek'].forEach(zone=>{
+    const zb=beds.filter(b=>b.zone===zone);
+    if(!zb.length) return;
+    const wrapper=document.createElement('div'); wrapper.className='zone';
+    const zh=document.createElement('div'); zh.className='zone-header '+zone; zh.textContent='Zona '+zone.toUpperCase();
+    wrapper.appendChild(zh);
+    zb.forEach(bed=>{
+      const card=document.createElement('div'); card.className='bed-card';
+      // determine bg color
+      let bg = getBedColor(bed);
+      card.style.background = bg;
+      card.innerHTML = `<div class="bed-header"><div><strong>${bed.id}</strong></div><div class="small">${bed.status==='available'?'Tersedia':'Terisi'}</div></div>`;
+      if(bed.status==='occupied' && bed.patient){
+        const p=bed.patient;
+        const ageText = p.birthdate ? (()=>{ const a=calcAgeFromBirthdate(p.birthdate); return `${a.y} th ${a.m} bln`; })() : (p.usia_th? `${p.usia_th} th ${p.usia_bl||0} bln` : '-');
+        const triaseText = p.triase || '-';
+        card.innerHTML += `<div style="margin-top:8px"><strong>Nama Pasien: </strong>${p.nama||'-'}</div>`;
+        card.innerHTML += `<div class="bed-meta"><strong>Usia:</strong> ${ageText} <br><strong>Level Triase:</strong> ${triaseText}</div>`;
+        card.innerHTML += `<div class="los-timer" id="timer-${bed.id}">${(p.admissionTimestamp? formatMsToHHMMSS(Date.now()-p.admissionTimestamp) : '')}</div>`;
+        const editBtn=document.createElement('button'); editBtn.className='btn btn-edit'; editBtn.textContent='Edit'; editBtn.onclick=()=> openPatientFullEdit(bed.id);
+        const stopBtn=document.createElement('button'); stopBtn.className='btn btn-stop'; stopBtn.textContent='Hentikan'; stopBtn.onclick=()=> openDischargeStart(bed.id);
+        const actions=document.createElement('div'); actions.style.marginTop='8px'; actions.appendChild(editBtn); actions.appendChild(stopBtn);
+        card.appendChild(actions);
+      } else {
+        card.innerHTML += `<div style="margin-top:10px"><em class="small">Bed kosong</em></div>`;
+        const admitBtn=document.createElement('button'); admitBtn.className='btn btn-admit'; admitBtn.textContent='Admisi'; admitBtn.onclick=()=> openAdmisiModal(bed.id);
+        card.appendChild(admitBtn);
+      }
+      wrapper.appendChild(card);
+    });
+    container.appendChild(wrapper);
+  });
+  saveAll();
+}
+
+/* bed color logic */
+function getBedColor(bed){
+  if(bed.status!=='occupied') return 'var(--available)';
+  const p = bed.patient;
+  if(!p || !p.triase) return 'var(--no-triase)';
+  // triase strings like "1 - Resusitasi" etc.
+  const m = p.triase.match(/^(\d)/);
+  const lvl = m ? parseInt(m[1],10) : null;
+  if(lvl===1 || lvl===2) return 'var(--triase-1-2)';
+  if(lvl===3) return 'var(--triase-3)';
+  if(lvl===4 || lvl===5) return 'var(--triase-4-5)';
+  return 'var(--no-triase)';
+}
+
+/* update LOS timers */
+setInterval(()=>{ beds.filter(b=>b.status==='occupied').forEach(b=>{ const el=document.getElementById('timer-'+b.id); if(el && b.patient && b.patient.admissionTimestamp) el.textContent = formatMsToHHMMSS(Date.now()-b.patient.admissionTimestamp); }); },1000);
+
+/* ---------- admisi minimal ---------- */
+function openAdmisiModal(bedId){ const form=document.getElementById('admisiForm'); form.reset(); form.elements['bedId'].value = bedId; document.getElementById('admisiModal').style.display='flex'; }
+function closeAdmisiModal(){ document.getElementById('admisiModal').style.display='none'; }
+document.getElementById('admisiForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  const fd=new FormData(this); const data=Object.fromEntries(fd.entries()); const bed=beds.find(b=>b.id===data.bedId);
+  if(!bed) return alert('Bed tidak ditemukan');
+  const w=getNow();
+  const patient = {
+    mrn:'', nama:data.nama||'', birthdate:'', usia_th:'', usia_bl:'', alamat:'',
+    pasienBaruLama:'', jk:'', triase:'', caraDatang:'', asalRujukan:'', jaminan:'',
+    statusRawat:'', ruangRawat:'', kelas:'', diagnosa:'', dpjp:'', tindakanIGD:'', perawat:'', dokterJaga:'',
+    admissionTimestamp:w.timestamp, jamDatang:w.jam, tanggal:new Date().toLocaleDateString('id-ID')
+  };
+  bed.status='occupied'; bed.patient = patient;
+  // add rekap minimal
+  rekapPasien.push({...patient});
+  saveAll(); renderZones(); renderRekap();
+  closeAdmisiModal();
+});
+
+/* ---------- patient edit (dashboard) - exclude statusRawat, dpjp, ruangRawat, kelas ---------- */
+function openPatientFullEdit(bedId){
+  const modal=document.getElementById('patientModal'); const form=document.getElementById('patientForm'); form.reset();
+  const bed=beds.find(b=>b.id===bedId); if(!bed || !bed.patient) return alert('Tidak ada pasien di bed ini');
+  const p=bed.patient;
+  const keys=['mrn','nama','birthdate','alamat','pasienBaruLama','jk','triase','caraDatang','asalRujukan','jaminan','diagnosa','tindakanIGD','perawat','dokterJaga','jamDatang','admissionTimestamp'];
+  keys.forEach(k=>{ if(form.elements[k]) form.elements[k].value = p[k] || ''; });
+  if(p.birthdate){ const a=calcAgeFromBirthdate(p.birthdate); form.elements['usia_display'].value = `${a.y} th ${a.m} bln`; } else form.elements['usia_display'].value = (p.usia_th? `${p.usia_th} th ${p.usia_bl||0} bln` : '');
+  form.elements['patientId'].value = p.admissionTimestamp || '';
+  populateAllDatalists(); attachDatalistFilters();
+  modal.style.display='flex';
+}
+function closePatientModal(){ document.getElementById('patientModal').style.display='none'; }
+
+/* attach datalist filters for patient modal */
+function attachDatalistFilters(){
+  const map=[
+    {id:'triase_input',dl:'dl_triase',list:masterData.triase},
+    {id:'cara_input',dl:'dl_caradatang',list:masterData.caraDatang},
+    {id:'jaminan_input',dl:'dl_jaminan',list:masterData.jaminan},
+    {id:'ruang_input',dl:'dl_ruang',list:masterData.ruangRawat},
+    {id:'kelas_input',dl:'dl_kelas',list:masterData.kelas},
+    {id:'dpjp_input',dl:'dl_dpjp',list:masterData.dpjp},
+    {id:'perawat_input',dl:'dl_perawat',list:masterData.perawat},      // ← tambahkan ini
+    {id:'dokterjaga_input',dl:'dl_dokterjaga',list:masterData.dokterJaga} // ← tambahkan ini
+  ];
+  map.forEach(o=>{
+    const inp=document.getElementById(o.id);
+    if(!inp) return;
+    inp.oninput=(e)=>{
+      const q=e.target.value.trim().toLowerCase();
+      const dl=document.getElementById(o.dl);
+      dl.innerHTML='';
+      const filtered=(q.length>=3)? o.list.filter(x=>x.toLowerCase().includes(q)): o.list;
+      filtered.forEach(v=>{
+        const opt=document.createElement('option');
+        opt.value=v;
+        dl.appendChild(opt);
+      });
+    };
+  });
+}
+/* submit patient form (dashboard edit) -> update bed and rekap (but do not alter statusRawat/dpjp/ruang/kelas) */
+document.getElementById('patientForm').addEventListener('submit', function(e){
+  e.preventDefault(); const fd=new FormData(this); const data=Object.fromEntries(fd.entries()); const pid = data.patientId || data.admissionTimestamp || '';
+  const bed = beds.find(b=>b.patient && String(b.patient.admissionTimestamp) === String(pid));
+  if(!bed) return alert('Bed/pasien tidak ditemukan');
+  // keep jamDatang/admissionTimestamp unchanged
+  data.jamDatang = bed.patient.jamDatang; data.admissionTimestamp = bed.patient.admissionTimestamp;
+  // compute usia fields
+  if(data.birthdate){ const a=calcAgeFromBirthdate(data.birthdate); data.usia_th=a.y; data.usia_bl=a.m; }
+  // preserve statusRawat/dpjp/ruang/kelas from bed.patient
+  data.statusRawat = bed.patient.statusRawat || '';
+  data.dpjp = bed.patient.dpjp || '';
+  data.ruangRawat = bed.patient.ruangRawat || '';
+  data.kelas = bed.patient.kelas || '';
+  // update bed.patient
+  bed.patient = {...bed.patient, ...data};
+  // update rekap entry if exists
+  const idx = rekapPasien.findIndex(r=> String(r.admissionTimestamp) === String(pid));
+  if(idx!==-1) rekapPasien[idx] = {...rekapPasien[idx], ...bed.patient};
+  saveAll(); renderZones(); renderRekap(); closePatientModal();
+});
+
+/* ---------- Discharge flow ---------- */
+function openDischargeStart(bedId){
+  document.getElementById('dis_select').style.display='block';
+  document.getElementById('dis_pulangkan').style.display='none';
+  document.getElementById('dis_pindahkan').style.display='none';
+  document.getElementById('dis_move_form').style.display='none';
+  document.getElementById('dis_bedId').value = bedId;
+  document.getElementById('dis_move_status').value = '';
+  document.getElementById('dischargeModal').style.display='flex';
+}
+function showDisSelect(){ document.getElementById('dis_select').style.display='block'; document.getElementById('dis_pulangkan').style.display='none'; document.getElementById('dis_pindahkan').style.display='none'; document.getElementById('dis_move_form').style.display='none'; }
+function disChoosePulangkan(){ document.getElementById('dis_select').style.display='none'; document.getElementById('dis_pulangkan').style.display='block'; document.getElementById('dis_pindahkan').style.display='none'; }
+function disChoosePindahkan(){ document.getElementById('dis_select').style.display='none'; document.getElementById('dis_pulangkan').style.display='none'; document.getElementById('dis_pindahkan').style.display='block'; }
+
+/* discharge with Pulangkan options */
+function dischargeWith(status){
+  const bedId=document.getElementById('dis_bedId').value; const bed=beds.find(b=>b.id===bedId);
+  if(!bed || !bed.patient) return alert('Tidak ada pasien di bed ini');
+  const w=getNow();
+  bed.patient.jamSelesai = w.jam;
+  bed.patient.statusRawat = status;
+  bed.patient.los = calcLOSFromTimes(bed.patient.jamDatang, bed.patient.jamSelesai);
+  const idx = rekapPasien.findIndex(r=> String(r.admissionTimestamp) === String(bed.patient.admissionTimestamp));
+  if(idx!==-1) rekapPasien[idx] = {...rekapPasien[idx], ...bed.patient}; else rekapPasien.push({...bed.patient});
+  bed.status='available'; bed.patient=null;
+  saveAll(); renderZones(); renderRekap(); document.getElementById('dischargeModal').style.display='none';
+}
+
+/* prepare move (RWI/ODC) -> show mini form */
+function prepareMove(status){
+  // reset highlight
+  document.querySelectorAll('#dis_pindahkan button').forEach(b => b.classList.remove('selected-orange'));
+  // highlight tombol yang diklik
+  if(status === 'RWI') {
+    document.querySelector('#dis_pindahkan button:nth-child(1)').classList.add('selected-orange');
+  }
+  if(status === 'ODC') {
+    document.querySelector('#dis_pindahkan button:nth-child(2)').classList.add('selected-orange');
+  }
+  document.getElementById('dis_move_status').value = status;
+  document.getElementById('dis_move_form').style.display = 'block';
+}
+
+
+/* cancel move */
+function cancelMove(){ document.getElementById('dis_move_form').style.display='none'; }
+
+/* discharge move -> collect dpjp/ruang/kelas and perform similar to pulangkan */
+function dischargeMove(){
+  const bedId=document.getElementById('dis_bedId').value; const bed=beds.find(b=>b.id===bedId);
+  if(!bed || !bed.patient) return alert('Tidak ada pasien di bed ini');
+  const status = document.getElementById('dis_move_status').value || 'RWI';
+  const dpjp = document.getElementById('dis_dpjp').value;
+  const ruang = document.getElementById('dis_ruang').value;
+  const kelas = document.getElementById('dis_kelas').value;
+  const w=getNow();
+  bed.patient.jamSelesai = w.jam;
+  bed.patient.statusRawat = status;
+  if(dpjp) bed.patient.dpjp = dpjp;
+  if(ruang) bed.patient.ruangRawat = ruang;
+  if(kelas) bed.patient.kelas = kelas;
+  bed.patient.los = calcLOSFromTimes(bed.patient.jamDatang, bed.patient.jamSelesai);
+  const idx = rekapPasien.findIndex(r=> String(r.admissionTimestamp) === String(bed.patient.admissionTimestamp));
+  if(idx!==-1) rekapPasien[idx] = {...rekapPasien[idx], ...bed.patient}; else rekapPasien.push({...bed.patient});
+  bed.status='available'; bed.patient=null;
+  saveAll(); renderZones(); renderRekap(); document.getElementById('dischargeModal').style.display='none';
+}
+
+/* ---------- master data functions ---------- */
+function formatMasterLabel(key) {
+  // Daftar kata/label khusus yang harus tampil sesuai keinginan
+  const specialLabels = {
+    dpjp: "DPJP",
+    mrn: "MRN",
+    igd: "IGD",
+    jk: "JK",
+    aps: "APS",
+    doa: "DOA",
+    rwj: "RWJ",
+    odc: "ODC"
+  };
+  if (specialLabels[key.toLowerCase()]) return specialLabels[key.toLowerCase()];
+  // Default pisahkan camelCase dan kapitalisasi awal kata
+  return key.replace(/([A-Z])/g, ' $1')
+            .replace(/^./, s => s.toUpperCase());
+}
+function openMasterModal(){ const tabs=document.getElementById('masterTabs'), content=document.getElementById('masterContent'); tabs.innerHTML=''; content.innerHTML=''; Object.keys(masterData).forEach((k,idx)=>{
+  const b=document.createElement('button');
+  b.className='btn';
+  b.textContent = formatMasterLabel(k);
+  b.onclick=()=> loadMasterContent(k);
+  tabs.appendChild(b);
+  if(idx===0) loadMasterContent(k);
+}); document.getElementById('masterModal').style.display='flex'; }
+function closeMasterModal(){ document.getElementById('masterModal').style.display='none'; populateAllDatalists(); }
+function loadMasterContent(key){ const content=document.getElementById('masterContent'); content.innerHTML=''; (masterData[key]||[]).forEach((item,i)=>{ const div=document.createElement('div'); div.className='master-list-item'; const left=document.createElement('div'); left.textContent=item; const right=document.createElement('div'); const del=document.createElement('button'); del.className='btn'; del.textContent='Hapus'; del.onclick=(()=>{ if(confirm('Hapus item?')){ masterData[key].splice(i,1); saveAll(); loadMasterContent(key); populateAllDatalists(); }}); right.appendChild(del); div.appendChild(left); div.appendChild(right); content.appendChild(div); }); const addDiv=document.createElement('div'); addDiv.style.marginTop='8px'; addDiv.innerHTML=`<input type="text" id="master_new_${key}" placeholder="Tambah ${formatMasterLabel(key)}" style="width:70%;padding:6px;border:1px solid #ddd;border-radius:6px"> <button class="btn" onclick="addMasterItem('${key}')">Tambah</button>`; content.appendChild(addDiv); }
+function addMasterItem(key){ const v=document.getElementById(`master_new_${key}`).value.trim(); if(!v) return alert('Masukkan nilai'); masterData[key]=masterData[key]||[]; masterData[key].push(v); saveAll(); loadMasterContent(key); populateAllDatalists(); }
+
+/* ---------- rekap render, edit & export ---------- */
+// Simpan index baris yang sedang diedit
+let rekapEditIndex = null;
+
+function selectOptions(list, value) {
+  return list.map(opt => `<option value="${opt}"${opt==value?' selected':''}>${opt}</option>`).join('');
+}
+function renderRekap() {
+  const tbody = document.querySelector('#rekapTable tbody');
+  tbody.innerHTML = '';
+  rekapPasien.forEach((p, idx) => {
+    const tr = document.createElement('tr');
+    if (rekapEditIndex === idx) {
+      // Mode edit inline
+      if (rekapEditIndex === idx) {
+  tr.innerHTML = `
+    <td><input type="text" value="${p.tanggal||''}" id="edit-tanggal"/></td>
+    <td><input type="text" value="${p.mrn||''}" id="edit-mrn"/></td>
+    <td><input type="text" value="${p.nama||''}" id="edit-nama"/></td>
+    <td style="display:flex;align-items:center;gap:4px;min-width:140px;">
+  <input type="date" value="${p.birthdate||''}" id="edit-birthdate" style="width:110px;padding:2px 4px;font-size:13px;"/>
+  <span id="edit-usia_display" style="white-space:nowrap;font-size:13px;">${(p.usia_th||'')} th ${(p.usia_bl||'')} bln</span>
+</td>
+    <td><input type="text" value="${p.alamat||''}" id="edit-alamat"/></td>
+    <td>
+      <select id="edit-pasienBaruLama">
+        <option value="Baru"${p.pasienBaruLama=="Baru"?' selected':''}>Baru</option>
+        <option value="Lama"${p.pasienBaruLama=="Lama"?' selected':''}>Lama</option>
+      </select>
+    </td>
+    <td>
+      <select id="edit-jk">
+        <option value="P"${p.jk=="P"?' selected':''}>P</option>
+        <option value="L"${p.jk=="L"?' selected':''}>L</option>
+      </select>
+    </td>
+    <td>${p.jamDatang||''}</td>
+    <td>${p.jamSelesai||''}</td>
+    <td>${p.los||''}</td>
+    <td>
+      <select id="edit-triase">
+        ${selectOptions(masterData.triase, p.triase)}
+      </select>
+    </td>
+    <td>
+      <select id="edit-caraDatang">
+        ${selectOptions(masterData.caraDatang, p.caraDatang)}
+      </select>
+    </td>
+     <td>
+    <input list="dl_asalrujukan" value="${p.asalRujukan||''}" id="edit-asalRujukan"/>
+  </td>
+    <td>
+      <select id="edit-jaminan">
+        ${selectOptions(masterData.jaminan, p.jaminan)}
+      </select>
+    </td>
+   <td>
+  <input type="text" value="${p.statusRawat||''}" id="edit-statusRawat" readonly class="readonly"/>
+</td>
+<td>
+  <input type="text" value="${p.ruangRawat||''}" id="edit-ruangRawat" readonly class="readonly"/>
+</td>
+<td>
+  <input type="text" value="${p.kelas||''}" id="edit-kelas" readonly class="readonly"/>
+</td>
+    <td><input type="text" value="${p.diagnosa||''}" id="edit-diagnosa"/></td>
+    <td>
+      <select id="edit-dpjp">
+        ${selectOptions(masterData.dpjp, p.dpjp)}
+      </select>
+    </td>
+    <td><input type="text" value="${p.tindakanIGD||''}" id="edit-tindakanIGD"/></td>
+    <td>
+      <select id="edit-perawat">
+        ${selectOptions(masterData.perawat, p.perawat)}
+      </select>
+    </td>
+    <td>
+      <select id="edit-dokterJaga">
+        ${selectOptions(masterData.dokterJaga, p.dokterJaga)}
+      </select>
+    </td>
+    <td>
+      <button class="btn btn-admit" onclick="saveRekapEdit(${idx})">Simpan</button>
+      <button class="btn" onclick="cancelRekapEdit()">Batal</button>
+    </td>
+  `;
+}   
+setTimeout(() => {
+  const birthdateInput = document.getElementById('edit-birthdate');
+  if (birthdateInput) {
+    birthdateInput.addEventListener('input', function() {
+      const usia = calcAgeFromBirthdate(this.value);
+      document.getElementById('edit-usia_display').textContent = `${usia.y} th ${usia.m} bln`;
+    });
+  }
+}, 0);
+} else {
+      // Mode normal
+      tr.innerHTML = `
+        <td>${p.tanggal||''}</td>
+        <td>${p.mrn||''}</td>
+        <td>${p.nama||''}</td>
+        <td>${(p.usia_th||'')} th ${(p.usia_bl||'')} bln</td>
+        <td>${p.alamat||''}</td>
+        <td>${p.pasienBaruLama||''}</td>
+        <td>${p.jk||''}</td>
+        <td>${p.jamDatang||''}</td>
+        <td>${p.jamSelesai||''}</td>
+        <td>${p.los||''}</td>
+        <td>${p.triase||''}</td>
+        <td>${p.caraDatang||''}</td>
+        <td>${p.asalRujukan||''}</td>
+        <td>${p.jaminan||''}</td>
+        <td>${p.statusRawat||''}</td>
+        <td>${p.ruangRawat||''}</td>
+        <td>${p.kelas||''}</td>
+        <td>${p.diagnosa||''}</td>
+        <td>${p.dpjp||''}</td>
+        <td>${p.tindakanIGD||''}</td>
+        <td>${p.perawat||''}</td>
+        <td>${p.dokterJaga||''}</td>
+        <td><button class="btn btn-edit" onclick="startRekapEdit(${idx})">Edit</button></td>
+      `;
+    }
+    tbody.appendChild(tr);
+  });
+}
+
+// Mulai edit baris
+function startRekapEdit(idx) {
+  rekapEditIndex = idx;
+  renderRekap();
+}
+
+// Batal edit baris
+function cancelRekapEdit() {
+  rekapEditIndex = null;
+  renderRekap();
+}
+
+// Simpan perubahan edit
+function saveRekapEdit(idx) {
+  const p = rekapPasien[idx];
+  // Ambil nilai dari input
+  p.tanggal = document.getElementById('edit-tanggal').value;
+  p.mrn = document.getElementById('edit-mrn').value;
+  p.nama = document.getElementById('edit-nama').value;
+   p.birthdate = document.getElementById('edit-birthdate').value;
+  // Hitung usia dari tanggal lahir
+  if (p.birthdate) {
+    const usia = calcAgeFromBirthdate(p.birthdate);
+    p.usia_th = usia.y;
+    p.usia_bl = usia.m;
+  }
+  p.alamat = document.getElementById('edit-alamat').value;
+  p.pasienBaruLama = document.getElementById('edit-pasienBaruLama').value;
+  p.jk = document.getElementById('edit-jk').value;
+  p.triase = document.getElementById('edit-triase').value;
+  p.caraDatang = document.getElementById('edit-caraDatang').value;
+  p.asalRujukan = document.getElementById('edit-asalRujukan').value;
+  p.jaminan = document.getElementById('edit-jaminan').value;
+  p.statusRawat = document.getElementById('edit-statusRawat').value;
+  p.ruangRawat = document.getElementById('edit-ruangRawat').value;
+  p.kelas = document.getElementById('edit-kelas').value;
+  p.diagnosa = document.getElementById('edit-diagnosa').value;
+  p.dpjp = document.getElementById('edit-dpjp').value;
+  p.tindakanIGD = document.getElementById('edit-tindakanIGD').value;
+  p.perawat = document.getElementById('edit-perawat').value;
+  p.dokterJaga = document.getElementById('edit-dokterJaga').value;
+  // Simpan ke storage dan render ulang
+  saveAll();
+  rekapEditIndex = null;
+  renderRekap();
+}
+/* edit rekap modal (all editable except jam fields) */
+function openEditRekap(idx){
+  const modal=document.getElementById('editRekapModal'), form=document.getElementById('editRekapForm');
+  const p=rekapPasien[idx]; form.innerHTML='';
+  const fields=[
+    {k:'tanggal',l:'Tanggal'},{k:'mrn',l:'MRN'},{k:'nama',l:'Nama'},{k:'usia_th',l:'Usia (th)'},{k:'usia_bl',l:'Usia (bln)'},
+    {k:'alamat',l:'Alamat'},{k:'pasienBaruLama',l:'Baru/Lama'},{k:'jk',l:'JK'},
+    {k:'jamDatang',l:'Jam Datang',ro:true},{k:'jamSelesai',l:'Jam Selesai',ro:true},{k:'los',l:'LOS',ro:true},
+    {k:'triase',l:'Triase'},{k:'caraDatang',l:'Cara Datang'},{k:'asalRujukan',l:'Asal Rujukan'},{k:'jaminan',l:'Jaminan'},
+    {k:'statusRawat',l:'Status Rawat'},{k:'ruangRawat',l:'Ruang Rawat'},{k:'kelas',l:'Kelas'},{k:'diagnosa',l:'Diagnosa'},
+    {k:'dpjp',l:'DPJP'},{k:'tindakanIGD',l:'Tindakan IGD'},{k:'perawat',l:'Perawat'},{k:'dokterJaga',l:'Dokter Jaga'}
+  ];
+  fields.forEach(f=>{ const label=document.createElement('label'); label.textContent=f.l; const inp=document.createElement('input'); inp.type='text'; inp.name=f.k; inp.value=p[f.k]||''; if(f.ro){ inp.readOnly=true; inp.classList.add('readonly'); } const dlMap={triase:'dl_triase', caraDatang:'dl_caradatang', jaminan:'dl_jaminan', ruangRawat:'dl_ruang', kelas:'dl_kelas', dpjp:'dl_dpjp', perawat:'dl_perawat', dokterJaga:'dl_dokterjaga'}; if(dlMap[f.k]) inp.setAttribute('list', dlMap[f.k]); label.appendChild(inp); form.appendChild(label); });
+  const saveBtn=document.createElement('button'); saveBtn.type='submit'; saveBtn.textContent='Simpan'; saveBtn.className='btn btn-admit';
+  const cancelBtn=document.createElement('button'); cancelBtn.type='button'; cancelBtn.textContent='Batal'; cancelBtn.className='btn'; cancelBtn.onclick=()=>modal.style.display='none';
+  form.appendChild(saveBtn); form.appendChild(cancelBtn);
+  form.onsubmit=function(e){ e.preventDefault(); const fd=new FormData(form); const newData=Object.fromEntries(fd.entries()); newData.jamDatang = p.jamDatang||''; newData.jamSelesai = p.jamSelesai||''; newData.los = calcLOSFromTimes(newData.jamDatang, newData.jamSelesai); rekapPasien[idx] = {...p, ...newData}; const bed = beds.find(b=>b.patient && String(b.patient.admissionTimestamp) === String(p.admissionTimestamp)); if(bed) bed.patient = {...bed.patient, ...rekapPasien[idx]}; saveAll(); renderZones(); renderRekap(); modal.style.display='none'; };
+  modal.style.display='flex';
+}
+
+/* export CSV */
+function exportRekapCSV(){ if(!rekapPasien.length) return alert('Tidak ada data'); const headers=["Tanggal","MRN","Nama","Usia","Alamat","Baru/Lama","JK","JamDatang","JamSelesai","LOS","Triase","CaraDatang","AsalRujukan","Jaminan","StatusRawat","RuangRawat","Kelas","Diagnosa","DPJP","TindakanIGD","Perawat","DokterJaga"]; const rows=rekapPasien.map(p=>[p.tanggal||'',p.mrn||'',p.nama||'',`${p.usia_th||''} th ${p.usia_bl||''} bln`,p.alamat||'',p.pasienBaruLama||'',p.jk||'',p.jamDatang||'',p.jamSelesai||'',p.los||'',p.triase||'',p.caraDatang||'',p.asalRujukan||'',p.jaminan||'',p.statusRawat||'',p.ruangRawat||'',p.kelas||'',p.diagnosa||'',p.dpjp||'',p.tindakanIGD||'',p.perawat||'',p.dokterJaga||'']); const csv=[headers.join(',')].concat(rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','))).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=`rekap_pasien_${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url); }
+function exportRekapExcel() {
+  if (!rekapPasien.length) return alert('Tidak ada data');
+  const headers = [
+    "Tanggal","MRN","Nama","Usia","Alamat","Baru/Lama","JK","JamDatang","JamSelesai","LOS",
+    "Triase","CaraDatang","AsalRujukan","Jaminan","StatusRawat","RuangRawat",
+    "Kelas","Diagnosa","DPJP","TindakanIGD","Perawat","DokterJaga"
+  ];
+  const data = rekapPasien.map(p => [
+    p.tanggal||'', p.mrn||'', p.nama||'', `${p.usia_th||''} th ${p.usia_bl||''} bln`, p.alamat||'',
+    p.pasienBaruLama||'', p.jk||'', p.jamDatang||'', p.jamSelesai||'', p.los||'',
+    p.triase||'', p.caraDatang||'', p.asalRujukan||'', p.jaminan||'', p.statusRawat||'',
+    p.ruangRawat||'', p.kelas||'', p.diagnosa||'', p.dpjp||'', p.tindakanIGD||'',
+    p.perawat||'', p.dokterJaga||''
+  ]);
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Rekap Pasien");
+  XLSX.writeFile(wb, `rekap_pasien_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+/* ---------- tabs & init ---------- */
+function showTab(t){
+  document.getElementById('dashboard').style.display = t==='dashboard'?'block':'none';
+  document.getElementById('statistik').style.display = t==='statistik'?'block':'none';
+  document.getElementById('rekap').style.display = t==='rekap'?'block':'none';
+  document.querySelectorAll('nav button').forEach(btn=>btn.classList.remove('active'));
+  if(t==='dashboard') document.querySelectorAll('nav button')[0].classList.add('active');
+  if(t==='rekap') document.querySelectorAll('nav button')[1].classList.add('active');
+}
+
+renderZones(); renderRekap(); populateAllDatalists(); saveAll();
+
+/* close modals on outside click */
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click', ev=>{ if(ev.target === m) m.style.display='none'; }));
+
+</script>
+</body>
+</html>
