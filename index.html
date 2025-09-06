@@ -69,6 +69,22 @@
   color: #fff !important;
 }
 
+/* Usia cell edit inline */
+#rekapTable td input[type="date"] {
+  width: 110px;
+  min-width: 0;
+  padding: 2px 4px;
+  font-size: 13px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  border: 1px solid #d5d5d5;
+  background: #f8f8fb;
+}
+#rekapTable td .usia-inline {
+  white-space: nowrap;
+  font-size: 13px;
+  margin-left: 6px;
+}
 </style>
 </head>
 <body>
@@ -153,10 +169,7 @@
         <input list="dl_caradatang" name="caraDatang" id="cara_input" placeholder="ketik 3 huruf">
         <datalist id="dl_caradatang"></datalist>
       </label>
-      <label>Asal Rujukan
-        <input list="dl_asalrujukan" name="asalRujukan" id="asalrujukan_input">
-        <datalist id="dl_asalrujukan"></datalist>
-      </label>
+      <label>Asal Rujukan <input type="text" name="asalRujukan"></label>
       <label>Jaminan
         <input list="dl_jaminan" name="jaminan" id="jaminan_input" placeholder="ketik 3 huruf">
         <datalist id="dl_jaminan"></datalist>
@@ -164,13 +177,13 @@
       <label>Diagnosa <input type="text" name="diagnosa"></label>
       <label>Tindakan IGD <input type="text" name="tindakanIGD"></label>
       <label>Nama Perawat
-  <input list="dl_perawat" name="perawat" id="perawat_input">
-  <datalist id="dl_perawat"></datalist>
-</label>
-<label>Nama Dokter Jaga
-  <input list="dl_dokterjaga" name="dokterJaga" id="dokterjaga_input">
-  <datalist id="dl_dokterjaga"></datalist>
-</label>
+        <input list="dl_perawat" name="perawat" id="perawat_input">
+        <datalist id="dl_perawat"></datalist>
+      </label>
+      <label>Nama Dokter Jaga
+        <input list="dl_dokterjaga" name="dokterJaga" id="dokterjaga_input">
+        <datalist id="dl_dokterjaga"></datalist>
+      </label>
       <label>Jam Datang <input type="text" name="jamDatang" readonly class="readonly"></label>
       
 
@@ -300,9 +313,9 @@ function populateAllDatalists(){
   fillDatalist('dl_kelas', masterData.kelas);
   fillDatalist('dl_dpjp', masterData.dpjp);
   fillDatalist('dl_perawat', masterData.perawat); // ← pastikan ini ada
-  fillDatalist('dl_dokterjaga', masterData.dokterJaga);
-  fillDatalist('dl_asalrujukan', masterData.asalRujukan); // ← pastikan ini ada
-}populateAllDatalists();
+  fillDatalist('dl_dokterjaga', masterData.dokterJaga); // ← pastikan ini ada
+}
+populateAllDatalists();
 
 /* ---------- render zones with triase-based colors and compact info ---------- */
 function renderZones(){
@@ -422,6 +435,7 @@ function attachDatalistFilters(){
     };
   });
 }
+
 /* submit patient form (dashboard edit) -> update bed and rekap (but do not alter statusRawat/dpjp/ruang/kelas) */
 document.getElementById('patientForm').addEventListener('submit', function(e){
   e.preventDefault(); const fd=new FormData(this); const data=Object.fromEntries(fd.entries()); const pid = data.patientId || data.admissionTimestamp || '';
@@ -591,9 +605,7 @@ function renderRekap() {
         ${selectOptions(masterData.caraDatang, p.caraDatang)}
       </select>
     </td>
-     <td>
-    <input list="dl_asalrujukan" value="${p.asalRujukan||''}" id="edit-asalRujukan"/>
-  </td>
+    <td><input type="text" value="${p.asalRujukan||''}" id="edit-asalRujukan"/></td>
     <td>
       <select id="edit-jaminan">
         ${selectOptions(masterData.jaminan, p.jaminan)}
@@ -630,7 +642,7 @@ function renderRekap() {
       <button class="btn" onclick="cancelRekapEdit()">Batal</button>
     </td>
   `;
-}   
+} 
 setTimeout(() => {
   const birthdateInput = document.getElementById('edit-birthdate');
   if (birthdateInput) {
@@ -639,8 +651,7 @@ setTimeout(() => {
       document.getElementById('edit-usia_display').textContent = `${usia.y} th ${usia.m} bln`;
     });
   }
-}, 0);
-} else {
+}, 0);   } else {
       // Mode normal
       tr.innerHTML = `
         <td>${p.tanggal||''}</td>
@@ -691,7 +702,7 @@ function saveRekapEdit(idx) {
   p.tanggal = document.getElementById('edit-tanggal').value;
   p.mrn = document.getElementById('edit-mrn').value;
   p.nama = document.getElementById('edit-nama').value;
-   p.birthdate = document.getElementById('edit-birthdate').value;
+  p.birthdate = document.getElementById('edit-birthdate').value;
   // Hitung usia dari tanggal lahir
   if (p.birthdate) {
     const usia = calcAgeFromBirthdate(p.birthdate);
